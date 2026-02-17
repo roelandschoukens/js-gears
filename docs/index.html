@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Gears</title>
+
+  <script src="js-gears/setup-canvas.js"></script>
+  <script src="js-gears/animation.js"></script>
+  <script src="js-gears/gears-basis.js"></script>
+  <script src="js-gears/gear.js"></script>
+  <script src="js-gears/gears-curve.js"></script>
+  <script src="js-gears/gears-cycloid.js"></script>
+  <script src="js-gears/gears-draw.js"></script>
+  <script src="js-gears/gears-involute.js"></script>
+  <script src="js-gears/gears-lantern.js"></script>
+  <script src="js-gears/draw-gears.js"></script>
+
+  <script>
+
+    const PLAY_SVG = `<svg width="16" height="16"><path d="M5,2 L5,14 L13,8 z"/></svg>`;
+    const STOP_SVG = `<svg width="16" height="16"><path d="M4,4 L4,12 L12,12 L12,4 z"/></svg>`;
+
+    document.addEventListener("DOMContentLoaded", (e) => {
+
+      // UI state
+      function ctxFor(id) {
+        const canvas = document.getElementById(id);
+        setupCanvas(canvas, null);
+        return canvas.getContext("2d");
+      }
+      
+      // Gears
+      const show = [];
+
+      const gi1 = new InvoluteGear({
+         tooth_count: 40,
+         cycloid_round_bottom: false,
+         color: "#ff3366", hole_shape: "cross-axle" })
+      const gi2 = gi1.opposite_gear({color: "#0044ff", tooth_count: 8})
+      const gi3 = gi1.opposite_gear({color: "#ffaa00", tooth_count: 24})
+      var x1 = -12;
+      var y1 = -3;
+      var x2 = x1 + gi1.radius() + gi2.radius()
+      var d3 = gi2.radius() + gi3.radius();
+      var x3 = x2 + d3 * 0.6;
+      var y3 = y1 + d3 * 0.8;
+      const gi_points = [[x1, y1], [x2, y1], [x3, y3]]
+
+      const gc1 = new CycloidGear({
+         tooth_count: 30, opposite_tooth_count: 5,
+         cycloid_round_bottom: false,
+         color: "#ff3366", hole_shape: "square" })
+      const gc2 = gc1.opposite_gear({color: "#0044ff", hole_size: .5})
+      var d1 = gc1.radius() + gc2.radius()
+      const gc_points = [[-2, 0], [d1-2, 0]]
+
+      const gl1 = new LanternEpicycloidGear({
+         tooth_count: 40, opposite_tooth_count: 8,
+         cycloid_round_bottom: false,
+         color: "#ff3366", hole_shape: "round", hole_size: 18 })
+      const gl2 = gl1.opposite_gear({color: "#0044ff"})
+      var d1 = gl1.radius() + gl2.radius()
+      const gl_points = [[-2, 0], [d1-2, 0]]
+
+      // Animation
+      function draw(ctx, t, zoom, gears, points) {
+        // wipe
+        ctx.save();
+        ctx.resetTransform();
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore()
+
+        ctx.save();
+
+        const [w, h] = logicalCanvasSize(ctx);
+        // centre is (0, 0)
+        ctx.transform(1, 0, 0, 1, w/2, h/2);
+
+        var rot_rad = 1e-4 * t;
+        var [x1, y1] = points[0];
+        gears[0].draw(ctx, window.devicePixelRatio, x1 * zoom, y1 * zoom, zoom, show, rot_rad, 0);
+
+        for (var i = 1; i < gears.length; ++i) {
+          const [x2, y2] = [x1, y1];
+          [x1, y1] = points[i];
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          rot_rad = Math.PI / gears[i].tooth_count 
+            - gears[i - 1].tooth_count / gears[i].tooth_count * (rot_rad - angle) + angle;
+          gears[i].draw(ctx, window.devicePixelRatio, x1 * zoom, y1 * zoom, zoom, show, rot_rad, Math.PI);
+        }
+
+        ctx.restore()
+      }
+
+      animate(document.getElementById("play1"), t => draw(ctxFor("display1"), t, 8, [gi1, gi2, gi3], gi_points), 0);
+      animate(document.getElementById("play2"), t => draw(ctxFor("display2"), t, 14, [gc1, gc2], gc_points), 0);
+      animate(document.getElementById("play3"), t => draw(ctxFor("display3"), t, 10, [gl1, gl2], gl_points), 0);
+    });
+  </script>
+
+  <style>
+    html { max-width: 60em; margin: 0 auto 0 auto; font-family: Georgia, 'Times New Roman', Times, serif; }
+    h1 { font-size: 2rem; border-bottom: 1px solid silver; font-family: helvetica, arial, sans-serif; }
+    .display { position: relative; width: fit-content;
+               border: 1px solid silver; border-radius: 5px; display: block;}
+    .display button { position: absolute; bottom: .5em; left: .5em; display: block; }
+    button svg { margin: 0.1em 0.3em; display: block; }
+  </style>
+</head>
+
+<body>
+  <h1>Gears</h1>
+  <p>This page shows gears.</p>
+  <h2>Involute</h2>
+  <div class="display">
+  <canvas id="display1" width="650" height="500"></canvas>
+  <button id="play1"></button>
+  </div>
+  <h2>Cycloid</h2>
+  <div class="display">
+  <canvas id="display2" width="650" height="500"></canvas>
+  <button id="play2"></button>
+  </div>
+  <h2>Lantern</h2>
+  <div class="display">
+  <canvas id="display3" width="650" height="500"></canvas>
+  <button id="play3"></button>
+  </div>
+</body>
+
+</html>
